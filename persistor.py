@@ -1,15 +1,20 @@
 import argparse
+import json
 import os
 import shutil
+import pandas as pd
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from embeddings import get_embedding_function
 from langchain_chroma import Chroma
 
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
 
-CHROMA_PATH = "chroma"
-DATA_PATH = "data"
+
+CHROMA_PATH = config["CHROMA_PATH"]
+DATA_PATH = config["DATA_PATH"]
 
 
 def main():
@@ -27,8 +32,26 @@ def main():
 
 
 def load_documents():
-    document_loader = PyPDFDirectoryLoader(DATA_PATH)
-    return document_loader.load()
+    documents = []
+
+    pdf_files = [f for f in os.listdir(DATA_PATH) if f.endswith(".pdf")]
+    if pdf_files:
+        print(f"Loading PDFs: {pdf_files}")
+        document_loader = PyPDFDirectoryLoader(DATA_PATH)
+        documents.extend(document_loader.load())
+
+    csv_files = [f for f in os.listdir(DATA_PATH) if f.endswith(".csv")]
+    for file_name in csv_files:
+        print(f"Loading CSV: {file_name}")
+        file_path = os.path.join(DATA_PATH, file_name)
+        df = pd.read_csv(file_path, delimiter=";")
+
+        for index, row in df.iterrows():
+            text = ",".join(map(str, row.values))
+            metadata = {"source": file_name, "row": index}
+            documents.append(Document(page_content=text, metadata=metadata))
+
+    return documents
 
 
 def split_documents(documents: list[Document]):
@@ -71,16 +94,16 @@ def calculate_chunk_ids(chunks):
 
     for chunk in chunks:
         source = chunk.metadata.get("source")
-        page = chunk.metadata.get("page")
-        current_page_id = f"{source}:{page}"
+        page_or_row = chunk.metadata.get("page") or chunk.metadata.get("row")
+        current_page_or_row_id = f"{source}:{page_or_row}"
 
-        if current_page_id == last_page_id:
+        if current_page_or_row_id == last_page_id:
             current_chunk_index += 1
         else:
             current_chunk_index = 0
 
-        chunk_id = f"{current_page_id}:{current_chunk_index}"
-        last_page_id = current_page_id
+        chunk_id = f"{current_page_or_row_id}:{current_chunk_index}"
+        last_page_id = current_page_or_row_id
 
         chunk.metadata["id"] = chunk_id
 

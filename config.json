@@ -1,0 +1,8 @@
+{
+    "CHROMA_PATH": "chroma_recipes",
+    "PROMPT_TEMPLATE": {
+        "en": "Answer the question based only on the following context:\n\n{context}\n\n---\n\nAnswer the question based on the above context: {question}",
+        "hr": "Odgovori na dano pitanje na hrvatskom koristeći samo context:\n\n{context}\n\n---\n\nOdgovori na pitanje na hrvatskom postavljeno gore (ukoliko je moguće za traženi recept dodaj i link) koristeći context: {question}"
+    },
+    "DATA_PATH": "recipe_data"
+}
