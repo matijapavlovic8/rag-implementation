@@ -1,8 +1,10 @@
 {
-    "CHROMA_PATH": "chroma_recipes",
+    "CHROMA_PATH": "chroma",
     "PROMPT_TEMPLATE": {
         "en": "Answer the question based only on the following context:\n\n{context}\n\n---\n\nAnswer the question based on the above context: {question}",
-        "hr": "Odgovori na dano pitanje na hrvatskom koristeći samo context:\n\n{context}\n\n---\n\nOdgovori na pitanje na hrvatskom postavljeno gore (ukoliko je moguće za traženi recept dodaj i link) koristeći context: {question}"
+        "relevance": "Provide a score between 0 and 1 as an answer. Give it as a float, only give a float no additional text. Document: {document}\n\nQuery: {query}\n\nHow relevant is this document to the query? "
     },
-    "DATA_PATH": "recipe_data"
+    "DATA_PATH": "data",
+    "MODEL": "llama3-chatqa:8b",
+    "EMBEDDING_MODEL": "mxbai-embed-large"
 }
