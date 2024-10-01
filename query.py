@@ -1,9 +1,9 @@
 import argparse
 import json
 
+import openai
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
 
 from embeddings import get_embedding_function
 
@@ -14,7 +14,10 @@ CHROMA_PATH = config["CHROMA_PATH"]
 PROMPT_TEMPLATE_EN = config["PROMPT_TEMPLATE"]["en"]
 PROMPT_TEMPLATE_REL = config["PROMPT_TEMPLATE"]["relevance"]
 MODEL = config["MODEL"]
-
+client = openai.OpenAI(
+    base_url='http://localhost:11434/v1',
+    api_key='ollama'
+)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -34,8 +37,14 @@ def query_rag(query_text: str):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_EN)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = Ollama(model=MODEL)
-    response_text = model.invoke(prompt)
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    response_text = response.choices[0].message.content
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"Response: {response_text}\nSources: {sources}"
@@ -44,12 +53,18 @@ def query_rag(query_text: str):
 
 
 def rerank_results(results, query_text):
-    model = Ollama(model=MODEL)
     reranked_results = []
 
     for doc, score in results:
         relevance_prompt = PROMPT_TEMPLATE_REL.format(document=doc.page_content, query=query_text)
-        relevance_score = float(model.invoke(relevance_prompt))
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "user", "content": relevance_prompt}
+            ]
+        )
+
+        relevance_score = float(response.choices[0].message.content)
         reranked_results.append((doc, relevance_score))
 
     reranked_results = sorted(reranked_results, key=lambda x: x[1], reverse=True)
