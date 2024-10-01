@@ -52,8 +52,9 @@ def query():
         return jsonify({'message': 'query_text parameter is required'}), 400
 
     try:
-        response_text = query_rag(query_text)
-        return jsonify({'response': response_text})
+        response_text, sources = query_rag(query_text)
+        return jsonify({'response': response_text,
+                        'sources': sources})
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 

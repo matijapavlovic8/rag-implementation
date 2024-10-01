@@ -1,13 +1,13 @@
-import json
+from langchain_ollama import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
-from langchain_community.embeddings.ollama import OllamaEmbeddings
-
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
-
-EMBEDDING_MODEL = config["EMBEDDING_MODEL"]
+from config import EMBEDDING_MODEL, OPENAI_API_BASE_URL, OPENAI_API_KEY, env
 
 
 def get_embedding_function():
-    embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL)
-    return embeddings
+    if env == "openai":
+        return OpenAIEmbeddings(api_key=OPENAI_API_KEY,
+                                model=EMBEDDING_MODEL,
+                                base_url=OPENAI_API_BASE_URL)
+    else:
+        return OllamaEmbeddings(model=EMBEDDING_MODEL)

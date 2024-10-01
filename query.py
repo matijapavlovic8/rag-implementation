@@ -1,23 +1,13 @@
 import argparse
-import json
 
-import openai
+from langchain_openai import ChatOpenAI
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
 
+from config import CHROMA_PATH, MODEL, PROMPT_TEMPLATE_EN, OPENAI_API_BASE_URL, OPENAI_API_KEY
 from embeddings import get_embedding_function
+from reranker import rerank_results
 
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
-
-CHROMA_PATH = config["CHROMA_PATH"]
-PROMPT_TEMPLATE_EN = config["PROMPT_TEMPLATE"]["en"]
-PROMPT_TEMPLATE_REL = config["PROMPT_TEMPLATE"]["relevance"]
-MODEL = config["MODEL"]
-client = openai.OpenAI(
-    base_url='http://localhost:11434/v1',
-    api_key='ollama'
-)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -36,42 +26,17 @@ def query_rag(query_text: str):
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_EN)
     prompt = prompt_template.format(context=context_text, question=query_text)
-
-    response = client.chat.completions.create(
+    model = ChatOpenAI(
+        api_key=OPENAI_API_KEY,
         model=MODEL,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
+        base_url=OPENAI_API_BASE_URL
     )
 
-    response_text = response.choices[0].message.content
-
+    response_text = model.invoke(prompt).content
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"Response: {response_text}\nSources: {sources}"
     print(formatted_response)
-    return response_text
-
-
-def rerank_results(results, query_text):
-    reranked_results = []
-
-    for doc, score in results:
-        relevance_prompt = PROMPT_TEMPLATE_REL.format(document=doc.page_content, query=query_text)
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "user", "content": relevance_prompt}
-            ]
-        )
-
-        relevance_score = float(response.choices[0].message.content)
-        reranked_results.append((doc, relevance_score))
-
-    reranked_results = sorted(reranked_results, key=lambda x: x[1], reverse=True)
-    print(reranked_results)
-
-    return reranked_results
-
+    return response_text, sources
 
 if __name__ == "__main__":
     main()

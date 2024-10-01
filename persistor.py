@@ -1,24 +1,17 @@
 import argparse
-import json
 import os
 import shutil
 import pandas as pd
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
+
+from config import DATA_PATH, CHROMA_PATH
 from embeddings import get_embedding_function
 from langchain_chroma import Chroma
 
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
-
-
-CHROMA_PATH = config["CHROMA_PATH"]
-DATA_PATH = config["DATA_PATH"]
-
 
 def main():
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--reset", action="store_true", help="Reset the database.")
     args = parser.parse_args()
