@@ -2,9 +2,9 @@ import argparse
 import os
 import shutil
 import pandas as pd
-from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import nltk
 from langchain.schema.document import Document
+from langchain_community.document_loaders import PyPDFDirectoryLoader
 
 from config import DATA_PATH, CHROMA_PATH
 from embeddings import get_embedding_function
@@ -47,14 +47,35 @@ def load_documents():
     return documents
 
 
-def split_documents(documents: list[Document]):
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=80,
-        length_function=len,
-        is_separator_regex=False,
-    )
-    return text_splitter.split_documents(documents)
+def split_documents(documents: list[Document], chunk_size=800, chunk_overlap=80):
+    chunks = []
+
+    for doc in documents:
+        paragraphs = doc.page_content.split('\n\n')
+        for paragraph in paragraphs:
+            sentences = nltk.sent_tokenize(paragraph)
+            current_chunk = []
+            current_length = 0
+            for sentence in sentences:
+                sentence_length = len(sentence)
+                if current_length + sentence_length <= chunk_size:
+                    current_chunk.append(sentence)
+                    current_length += sentence_length
+                else:
+                    chunks.append(Document(
+                        page_content=" ".join(current_chunk),
+                        metadata=doc.metadata
+                    ))
+                    overlap_chunk = current_chunk[-chunk_overlap:]
+                    current_chunk = overlap_chunk + [sentence]
+                    current_length = sum(len(s) for s in current_chunk)
+            if current_chunk:
+                chunks.append(Document(
+                    page_content=" ".join(current_chunk),
+                    metadata=doc.metadata
+                ))
+
+    return chunks
 
 
 def add_to_chroma(chunks: list[Document]):
